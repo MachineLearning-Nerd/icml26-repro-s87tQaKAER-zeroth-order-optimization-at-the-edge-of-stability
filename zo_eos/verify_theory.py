@@ -127,12 +127,19 @@ def _build_hessians() -> list[tuple[str, np.ndarray]]:
             out.append((f"random_dense_d{d}_{sp}", hz.random_dense_psd(d, sp, seed=1000 + d + hash(sp) % 97)))
     # a diagonal (but high-d) one for completeness -- still far from 5-dim toy
     out.append(("diag_decay_d300", hz.diagonal_psd(1.0 / np.arange(1, 301) ** 1.3)))
-    # real-data least-squares Hessian (dense, real spectrum)
-    try:
-        X = _cifar_design(d_feat=250, n=1000)
-        out.append(("realdata_cifar_d250", hz.real_data_hessian(X, ridge=1e-3)))
-    except Exception as e:  # pragma: no cover
-        print(f"[theory] real-data Hessian skipped: {e}")
+    # real-data least-squares Hessian (dense, real spectrum) -- only if CIFAR is
+    # already cached locally; we never trigger a download in the (fast) theory
+    # stage.  The theorems hold for every PSD H, so the synthetic dense matrices
+    # above already carry the verification; this just adds a real-data instance.
+    cifar_tar = "/tmp/cifar_data/cifar-10-batches-py/data_batch_1"
+    if os.path.exists(cifar_tar):
+        try:
+            X = _cifar_design(d_feat=250, n=1000)
+            out.append(("realdata_cifar_d250", hz.real_data_hessian(X, ridge=1e-3)))
+        except Exception as e:  # pragma: no cover
+            print(f"[theory] real-data Hessian skipped: {e}")
+    else:
+        print("[theory] real-data Hessian skipped (CIFAR not cached; reserved for the empirical stage)")
     return out
 
 
