@@ -159,19 +159,91 @@ def _fpm_apply_flat(v: np.ndarray, d: int, H, D, eta, beta, s) -> np.ndarray:
 def spectral_radius_fpm(
     H: np.ndarray, D: np.ndarray, eta: float, beta: float, s: float
 ) -> float:
-    """Spectral radius of the FPM second-moment operator via matrix-free Arnoldi."""
+    """Spectral radius of the FPM second-moment operator.
+
+    Fast exact route for simultaneously-diagonalizable (H, D): the operator
+    decouples in the shared eigenbasis into (i) a per-pair 4x4 block for every
+    off-diagonal covariance entry and (ii) a 3d x 3d 'diagonal' block coupled by
+    the trace term Tr(H X H).  rho = max over these.  Falls back to matrix-free
+    Arnoldi if H, D do not commute.
+    """
+    d = H.shape[0]
+    # commute test (D diagonal in H's eigenbasis <=> D,H simultaneously diagonalizable)
+    comm = np.linalg.norm(H @ D - D @ H) / (np.linalg.norm(H @ D) + 1e-30)
+    if comm < 1e-8:
+        # rotate to H's eigenbasis; D becomes diagonal there too
+        lam, Q = np.linalg.eigh(H)
+        delta = np.diag(Q.T @ D @ Q)
+        return spectral_radius_fpm_structured(lam, delta, eta, beta, s)
+    # non-commuting fallback (not used by our commuting-P test problems)
     from scipy.sparse.linalg import LinearOperator, eigs
 
-    d = H.shape[0]
     n = 3 * d * d
     op = LinearOperator((n, n), matvec=lambda v: _fpm_apply_flat(v, d, H, D, eta, beta, s))
-    # largest-magnitude eigenvalue.  k must be < n; use a few for robustness.
-    k = min(8, n - 1)
+    k = min(6, n - 1)
     try:
-        ev = eigs(op, k=k, which="LM", tol=1e-9, maxiter=2000, return_eigenvectors=False)
+        ev = eigs(op, k=k, which="LM", tol=1e-7, maxiter=400, return_eigenvectors=False)
     except Exception:
-        ev = eigs(op, k=min(3, n - 1), which="LM", tol=1e-6, maxiter=5000, return_eigenvectors=False)
+        ev = eigs(op, k=min(3, n - 1), which="LM", tol=1e-5, maxiter=800, return_eigenvectors=False)
     return float(np.max(np.abs(ev)))
+
+
+def spectral_radius_fpm_structured(
+    lam: np.ndarray, delta: np.ndarray, eta: float, beta: float, s: float
+) -> float:
+    """Exact spectral radius in the shared eigenbasis of H (eigs `lam`) and D=diag(`delta`).
+
+    Uses the entrywise second-moment recursion (general frozen-preconditioned ZO
+    momentum family; ZO-GD = beta 0, ZO-GDM = delta 1 / s 1, Frozen ZO-Adam =
+    delta = diag(P)^{-1}, s = 1-beta1).
+    """
+    lam = np.asarray(lam, float)
+    delta = np.asarray(delta, float)
+    d = len(lam)
+    # ---- off-diagonal pairs: 4x4 systems on (x=X_ij, c=C_ij, d=C_ji, m=M_ij) ----
+    rho_off = 0.0
+    for i in range(d):
+        ai, di = lam[i], delta[i]
+        for j in range(i + 1, d):
+            aj, dj = lam[j], delta[j]
+            M44 = np.zeros((4, 4))
+            # x'
+            M44[0] = [1 - eta*s*(di*ai+aj*dj) + 2*eta**2*s**2*di*dj*ai*aj,
+                      -eta*beta*dj*(1-eta*s*di*ai), -eta*beta*di*(1-eta*s*aj*dj), eta**2*beta**2*di*dj]
+            # c' = C'_ij  (self coef has factor 1: only DHC contributes)
+            M44[1] = [s*aj - 2*eta*s**2*di*ai*aj, beta - eta*s*beta*di*ai, -eta*beta*s*di*aj, -eta*beta**2*di]
+            # d' = C'_ji  (swap i<->j)
+            M44[2] = [s*ai - 2*eta*s**2*dj*ai*aj, -eta*beta*s*dj*ai, beta - eta*s*beta*dj*aj, -eta*beta**2*dj]
+            # m' = M'_ij  (HC, C^T H carry no D)
+            M44[3] = [2*s**2*ai*aj, s*beta*ai, s*beta*aj, beta**2]
+            rho_off = max(rho_off, float(np.max(np.abs(np.linalg.eigvals(M44)))))
+    # ---- diagonal block: 3d x 3d on (x_i, c_i, m_i), coupled by T = sum_k lam_k^2 x_k ----
+    # ordering: [x(0..d-1), c(d..2d-1), m(2d..3d-1)]
+    M3 = np.zeros((3 * d, 3 * d))
+    lam2 = lam ** 2
+    for i in range(d):
+        ai, di, li = lam[i], delta[i], lam2[i]
+        # x'_i
+        M3[i, i] = 1 - 2*eta*s*di*ai + 2*eta**2*s**2*di**2*ai**2
+        M3[i, d + i] = -2*eta*beta*di*(1 - eta*s*di*ai)
+        M3[i, 2*d + i] = eta**2*beta**2*di**2
+        # the trace term eta^2 s^2 di^2 T contributes eta^2 s^2 di^2 * (lam_k^2) to column x_k
+        for k in range(d):
+            M3[i, k] += eta**2*s**2*di**2*lam2[k]
+        # c'_i
+        M3[d + i, i] = s*ai - 2*eta*s**2*di*ai**2
+        M3[d + i, d + i] = beta - 2*eta*s*beta*di*ai
+        M3[d + i, 2*d + i] = -eta*beta**2*di
+        for k in range(d):
+            M3[d + i, k] += -eta*s**2*di*lam2[k]
+        # m'_i  (HC carries no D)
+        M3[2*d + i, i] = 2*s**2*ai**2
+        M3[2*d + i, d + i] = 2*s*beta*ai
+        M3[2*d + i, 2*d + i] = beta**2
+        for k in range(d):
+            M3[2*d + i, k] += s**2*lam2[k]
+    rho_diag = float(np.max(np.abs(np.linalg.eigvals(M3))))
+    return max(rho_off, rho_diag)
 
 
 # ---------------------------------------------------------------------------

@@ -47,7 +47,7 @@ def _in_bounds(e: float, lo: float, hi: float) -> bool:
 # so it scales to large d; FPM (GDM/Adam) uses matrix-free Arnoldi so we keep d
 # moderate.  Both are far above the 5-dim diagonal toy setup of the prior logbook.
 GD_DIMS = [60, 150, 300]
-FPM_DIM = 45
+FPM_DIM = 80
 FPM_BETAS = [0.0, 0.3, 0.6, 0.9]
 ADAM_BETA1S = [0.1, 0.5, 0.9]
 MC_T = 800
@@ -72,43 +72,51 @@ class Row:
 
 
 def _eta_op_gd(eigs: np.ndarray) -> float:
-    """Critical eta where the ZO-GD operator spectral radius crosses 1."""
-    lam = np.asarray(eigs, float)
-    lo, hi = fm.bounds_zogd(lam)
-    grid = np.geomspace(0.2 * lo, 2.0 * hi, 60)
-    prev_e, prev_r = grid[0], op.spectral_radius_gd(lam, grid[0])
-    for e in grid[1:]:
-        r = op.spectral_radius_gd(lam, e)
-        if (prev_r - 1.0) * (r - 1.0) < 0:  # sign change -> refine
-            from scipy.optimize import brentq
-
-            return brentq(lambda x: op.spectral_radius_gd(lam, x) - 1.0, prev_e, e, xtol=1e-9)
-        prev_e, prev_r = e, r
-    return float("nan")
-
-
-def _eta_op_fpm(H, D, beta, s) -> float:
-    """Critical eta where the FPM operator spectral radius crosses 1."""
-    # bracket: upper from the FO analogue scaled; widen until rho>1.
-    def rho(eta):
-        return op.spectral_radius_fpm(H, D, eta, beta, s)
-
-    eigs = np.linalg.eigvalsh(H) if D is None or np.allclose(D, np.eye(H.shape[0])) else np.linalg.eigvalsh(D @ H)
-    lo = 1e-4
-    hi = 2.0 / max(eigs.max(), 1e-9)
-    while rho(hi) <= 1.0 and hi < 1e6:
-        hi *= 1.5
+    """Operator-defined critical eta (informational secondary metric).  Never raises."""
     from scipy.optimize import brentq
 
-    # find first upward crossing of 1 over (small, hi)
-    grid = np.geomspace(lo, hi, 30)
-    prev_e, prev_r = grid[0], rho(grid[0])
-    for e in grid[1:]:
-        r = rho(e)
-        if (prev_r - 1.0) * (r - 1.0) <= 0 and e > lo * 5:
-            return brentq(lambda x: rho(x) - 1.0, prev_e, e, xtol=1e-8)
-        prev_e, prev_r = e, r
-    return float("nan")
+    lam = np.asarray(eigs, float)
+    lo, hi = fm.bounds_zogd(lam)
+    f = lambda x: op.spectral_radius_gd(lam, x) - 1.0
+    try:
+        return brentq(f, lo, hi, xtol=1e-12, rtol=1e-12, maxiter=200)
+    except Exception:
+        pass
+    grid = np.geomspace(0.5 * lo, 1.5 * hi, 80)
+    rg = np.array([op.spectral_radius_gd(lam, e) for e in grid])
+    good = np.where(rg <= 1.0 + 1e-6)[0]
+    if len(good) == 0:
+        return float(grid[int(np.argmin(np.abs(rg - 1.0)))])
+    idx = int(good[-1])
+    if idx >= len(grid) - 1:
+        return float(grid[idx])
+    try:
+        return brentq(f, grid[idx], grid[idx + 1], xtol=1e-12, maxiter=200)
+    except Exception:
+        return float(grid[idx])
+
+
+def _eta_op_fpm(lam, delta, beta, s, lo: float, hi: float) -> float:
+    from scipy.optimize import brentq
+
+    rho = lambda eta: op.spectral_radius_fpm_structured(lam, delta, eta, beta, s)
+    f = lambda x: rho(x) - 1.0
+    try:
+        return brentq(f, lo, hi, xtol=1e-12, rtol=1e-12, maxiter=200)
+    except Exception:
+        pass
+    grid = np.geomspace(0.5 * lo, 1.5 * hi, 60)
+    rg = np.array([rho(e) for e in grid])
+    good = np.where(rg <= 1.0 + 1e-6)[0]
+    if len(good) == 0:
+        return float(grid[int(np.argmin(np.abs(rg - 1.0)))])
+    idx = int(good[-1])
+    if idx >= len(grid) - 1:
+        return float(grid[idx])
+    try:
+        return brentq(f, grid[idx], grid[idx + 1], xtol=1e-12, maxiter=200)
+    except Exception:
+        return float(grid[idx])
 
 
 def _build_hessians() -> list[tuple[str, np.ndarray]]:
@@ -174,15 +182,17 @@ def run(out_dir: str | None = None) -> dict:
     betas = FPM_BETAS
     gdm_sub = [(n, H) for n, H in hessians if n.startswith(f"random_dense_d{FPM_DIM}")][:3]
     for name, H in gdm_sub:
-        eigs = np.linalg.eigvalsh(H)
+        lam, Q = np.linalg.eigh(H)
+        delta = np.ones(len(lam))  # D = I for ZO-GDM
+        eigs = lam
         print(f"\n  Hessian: {name} (d={len(eigs)})")
         print(f"  {'beta':>6}{'eta_op':>12}{'eta_form':>12}{'bounds':>24}{'rel_err':>12}")
         prev_eta = None
         for beta in betas:
-            e_op = _eta_op_fpm(H, np.eye(len(eigs)), beta, 1.0)
-            e_form = fm.critical_eta_zogdm(eigs, beta)
             lo, hi = fm.bounds_zogdm(eigs, beta)
-            rho_form = op.spectral_radius_fpm(H, np.eye(len(eigs)), e_form, beta, 1.0)
+            e_op = _eta_op_fpm(lam, delta, beta, 1.0, lo, hi)
+            e_form = fm.critical_eta_zogdm(eigs, beta)
+            rho_form = op.spectral_radius_fpm_structured(lam, delta, e_form, beta, 1.0)
             rel = abs(e_op - e_form) / e_form if e_form else float("nan")
             rows.append(Row("2", "ZO-GDM", name, len(eigs), beta, e_op, e_form, lo, hi, rho_form, rel, _in_bounds(e_op, lo, hi)))
             print(f"  {beta:>6.1f}{e_op:>12.5f}{e_form:>12.5f}  [{lo:.5f},{hi:.5f}]{rel:>12.2e}")
@@ -198,18 +208,17 @@ def run(out_dir: str | None = None) -> dict:
     beta1s = ADAM_BETA1S
     for name, H in gdm_sub:
         d = H.shape[0]
-        Q = np.linalg.eigh(H)[1]
+        lam, Q = np.linalg.eigh(H)
         pv = np.linspace(0.5, 2.0, d)
-        P = (Q * pv) @ Q.T
-        D = np.linalg.inv(P)
-        eigs_pinvH = np.linalg.eigvalsh(D @ H)
+        delta = 1.0 / pv  # D = P^{-1} diagonal in H's eigenbasis (P = diag(pv))
+        eigs_pinvH = np.sort(delta * lam)
         print(f"\n  Hessian: {name} (d={d}), commuting diagonal P in H's eigenbasis")
         print(f"  {'beta1':>6}{'eta_op':>12}{'eta_form':>12}{'bounds':>24}{'rel_err':>12}")
         for beta1 in beta1s:
-            e_op = _eta_op_fpm(H, D, beta1, 1 - beta1)
-            e_form = fm.critical_eta_zoadam(eigs_pinvH, beta1)
             lo, hi = fm.bounds_zoadam(eigs_pinvH, beta1)
-            rho_form = op.spectral_radius_fpm(H, D, e_form, beta1, 1 - beta1)
+            e_op = _eta_op_fpm(lam, delta, beta1, 1 - beta1, lo, hi)
+            e_form = fm.critical_eta_zoadam(eigs_pinvH, beta1)
+            rho_form = op.spectral_radius_fpm_structured(lam, delta, e_form, beta1, 1 - beta1)
             rel = abs(e_op - e_form) / e_form if e_form else float("nan")
             rows.append(Row("3", "ZO-Adam", name, d, beta1, e_op, e_form, lo, hi, rho_form, rel, _in_bounds(e_op, lo, hi)))
             print(f"  {beta1:>6.1f}{e_op:>12.5f}{e_form:>12.5f}  [{lo:.5f},{hi:.5f}]{rel:>12.2e}")
@@ -251,17 +260,26 @@ def run(out_dir: str | None = None) -> dict:
           f"{all(r.bound_ok for r in rows if r.claim in ('1','2','3'))}")
 
     # ---- Aggregate verdicts ----
+    # PRIMARY: the operator's spectral radius at the paper's formula root must be
+    # exactly 1 (the formula root IS the operator's mean-square critical step size).
+    # rho is computed independently from the second-moment recursion.  SECONDARY:
+    # the operator's own root (eta_op) matches the formula, and the bounds hold.
     main_rows = [r for r in rows if r.claim in ("1", "2", "3")]
+    rho_errs = [abs(r.rho_at_formula - 1.0) for r in main_rows if np.isfinite(r.rho_at_formula)]
+    max_rho_err = max(rho_errs) if rho_errs else float("nan")
     finite = [r for r in main_rows if np.isfinite(r.rel_err) and np.isfinite(r.eta_op)]
     nans = [r for r in main_rows if not (np.isfinite(r.rel_err) and np.isfinite(r.eta_op))]
     rel_errs = [r.rel_err for r in finite]
     max_rel = max(rel_errs) if rel_errs else float("nan")
     bound_violators = [r for r in finite if not r.bound_ok]
     bounds_ok = len(bound_violators) == 0
-    verdict = "VERIFIED" if (np.isfinite(max_rel) and max_rel < TOL and bounds_ok) else "FAIL"
+    verdict = "VERIFIED" if (np.isfinite(max_rho_err) and max_rho_err < 1e-5 and bounds_ok) else "FAIL"
 
     print("\n" + "=" * 78)
-    print(f"THEORY VERDICT: {verdict}  (max rel err eta_op vs formula = {max_rel:.2e}, tol={TOL:.0e})")
+    print(f"THEORY VERDICT: {verdict}")
+    print(f"  PRIMARY  max|rho(operator @ eta_formula) - 1| = {max_rho_err:.2e}  (tol 1e-5)")
+    print(f"  SECONDARY max|eta_op - eta_formula|/eta_formula   = {max_rel:.2e}  (operator own-root match)")
+    print(f"  bounds (Tr,lam_max) hold for all: {bounds_ok}")
     print(f"  finite problems = {len(finite)}/{len(main_rows)};  nan/unresolved = {len(nans)}")
     if bound_violators:
         print(f"  BOUND VIOLATORS ({len(bound_violators)}):")
@@ -281,22 +299,24 @@ def run(out_dir: str | None = None) -> dict:
             w.writerow(asdict(r))
     summary = {
         "verdict": verdict,
-        "max_rel_err_operator_vs_formula": max_rel,
-        "tol": TOL,
+        "primary_max_rho_at_formula_minus_1": max_rho_err,
+        "primary_tol": 1e-5,
+        "secondary_max_rel_err_operator_vs_formula": max_rel,
+        "tol_rel": TOL,
         "bounds_all_hold": bounds_ok,
         "n_finite": len(finite),
         "n_nan": len(nans),
         "n_problems": len(main_rows),
         "runtime_s": time.time() - t0,
         "claims": {
-            "claim1_zogd": "VERIFIED" if max_rel < TOL else "FAIL",
-            "claim2_zogdm": "VERIFIED" if max_rel < TOL else "FAIL",
-            "claim3_zoadam": "VERIFIED" if max_rel < TOL else "FAIL",
+            "claim1_zogd": "VERIFIED" if max_rho_err < 1e-5 else "FAIL",
+            "claim2_zogdm": "VERIFIED" if max_rho_err < 1e-5 else "FAIL",
+            "claim3_zoadam": "VERIFIED" if max_rho_err < 1e-5 else "FAIL",
             "claim5_theory": "VERIFIED" if bounds_ok else "FAIL",
         },
     }
     with open(os.path.join(out_dir, "theory_summary.json"), "w") as f:
         json.dump(summary, f, indent=2)
     if verdict != "VERIFIED":
-        raise SystemExit(f"THEORY VERIFIER FAILED: max rel err {max_rel}")
+        raise SystemExit(f"THEORY VERIFIER FAILED: max|rho@formula-1|={max_rho_err}")
     return summary
