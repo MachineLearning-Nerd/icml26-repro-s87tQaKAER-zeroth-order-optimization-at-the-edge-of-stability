@@ -47,7 +47,7 @@ def _in_bounds(e: float, lo: float, hi: float) -> bool:
 # so it scales to large d; FPM (GDM/Adam) uses matrix-free Arnoldi so we keep d
 # moderate.  Both are far above the 5-dim diagonal toy setup of the prior logbook.
 GD_DIMS = [60, 150, 300]
-FPM_DIM = 80
+FPM_DIM = 40
 FPM_BETAS = [0.0, 0.3, 0.6, 0.9]
 ADAM_BETA1S = [0.1, 0.5, 0.9]
 MC_T = 600
@@ -101,11 +101,12 @@ def _eta_op_fpm(lam, delta, beta, s, lo: float, hi: float) -> float:
 
     rho = lambda eta: op.spectral_radius_fpm_structured(lam, delta, eta, beta, s)
     f = lambda x: rho(x) - 1.0
-    try:
-        return brentq(f, lo, hi, xtol=1e-12, rtol=1e-12, maxiter=200)
-    except Exception:
-        pass
-    grid = np.geomspace(0.5 * lo, 1.5 * hi, 60)
+    for a, b in [(lo, hi), (0.9 * lo, 1.1 * hi), (0.5 * lo, 2.0 * hi)]:
+        try:
+            return brentq(f, a, b, xtol=1e-11, rtol=1e-11, maxiter=80)
+        except Exception:
+            continue
+    grid = np.geomspace(0.5 * lo, 1.5 * hi, 25)
     rg = np.array([rho(e) for e in grid])
     good = np.where(rg <= 1.0 + 1e-6)[0]
     if len(good) == 0:
@@ -114,7 +115,7 @@ def _eta_op_fpm(lam, delta, beta, s, lo: float, hi: float) -> float:
     if idx >= len(grid) - 1:
         return float(grid[idx])
     try:
-        return brentq(f, grid[idx], grid[idx + 1], xtol=1e-12, maxiter=200)
+        return brentq(f, grid[idx], grid[idx + 1], xtol=1e-11, maxiter=80)
     except Exception:
         return float(grid[idx])
 
