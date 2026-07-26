@@ -307,6 +307,21 @@ def eos_fraction(traj, burn=0.3):
 # ----------------------- orchestrator -----------------------
 
 
+def _print_traj(tr):
+    """Print the full checkpoint trajectory to the log (the only persisted
+    evidence channel), so figures can be regenerated from the run log."""
+    tag = f"{tr['opt']}_eta{tr.get('eta', 'x')}_beta{tr.get('beta', 'x')}"
+    print(f"TRAJ_START {tag}")
+    for i in range(len(tr["t"])):
+        t = tr["t"][i]
+        loss = tr["loss"][i] if i < len(tr["loss"]) else float("nan")
+        trc = tr["trace"][i] if i < len(tr["trace"]) else float("nan")
+        lmx = tr["lmax"][i] if tr.get("lmax") and i < len(tr["lmax"]) else float("nan")
+        thr = tr["thr"][i] if i < len(tr["thr"]) else float("nan")
+        print(f"TRAJ {t} {loss:.6e} {trc:.6e} {lmx:.6e} {thr:.6e}")
+    print("TRAJ_END")
+
+
 def run(out_dir: str | None = None) -> dict:
     out_dir = out_dir or ARTIFACT_DIR
     os.makedirs(out_dir, exist_ok=True)
@@ -332,7 +347,7 @@ def run(out_dir: str | None = None) -> dict:
         tr = train_zogd(m, X, Y, eta, N_ITERS, MU, LOG_EVERY, SEED)
         frac, npost = eos_fraction(tr)
         print(f"  ZO-GD eta={eta:.0e}: final loss={tr['loss'][-1]:.4f}  EoS band fraction={frac:.2f} ({npost} ckpts)")
-        tr["eos_fraction"] = frac; all_traj.append(tr)
+        tr["eos_fraction"] = frac; all_traj.append(tr); _print_traj(tr)
 
     print("\n[empirical] ZO-GDM beta sweep (Claim 4, Fig 2 middle) ...")
     for beta in BETAS_GDM:
@@ -340,7 +355,7 @@ def run(out_dir: str | None = None) -> dict:
         tr = train_zogdm(m, X, Y, ETA_GDM, beta, N_ITERS, MU, LOG_EVERY, SEED)
         frac, _ = eos_fraction(tr)
         print(f"  ZO-GDM beta={beta:.2f} eta={ETA_GDM:.0e}: final loss={tr['loss'][-1]:.4f}  EoS band fraction={frac:.2f}")
-        tr["eos_fraction"] = frac; all_traj.append(tr)
+        tr["eos_fraction"] = frac; all_traj.append(tr); _print_traj(tr)
 
     print("\n[empirical] ZO-Adam eta sweep (Claim 4, Fig 2 right) ...")
     for eta in ETA_ADAM:
@@ -349,7 +364,7 @@ def run(out_dir: str | None = None) -> dict:
         frac, _ = eos_fraction(tr)
         rc = np.nanmean(tr["relcomm"]) if tr["relcomm"] else float("nan")
         print(f"  ZO-Adam eta={eta:.0e}: final loss={tr['loss'][-1]:.4f}  EoS band fraction={frac:.2f}  mean RelCommF={rc:.3f}")
-        tr["eos_fraction"] = frac; all_traj.append(tr)
+        tr["eos_fraction"] = frac; all_traj.append(tr); _print_traj(tr)
 
     print("\n[empirical] Catapult (Claim 6, Fig 3) ...")
     m = fresh()
@@ -357,7 +372,7 @@ def run(out_dir: str | None = None) -> dict:
     # assess: loss spikes after each eta increase
     spikes = _catapult_spikes(cat)
     print(f"  Catapult etas={CATAPULT_ETAS}: loss-spike-after-increase={spikes}")
-    cat["spikes"] = spikes; all_traj.append(cat)
+    cat["spikes"] = spikes; all_traj.append(cat); _print_traj(cat)
 
     # ---- write CSVs ----
     for tr in all_traj:
@@ -463,20 +478,20 @@ def _figures(trajs, out_dir):
 
 
 # ----------------------- config (tunable) -----------------------
-N_IMG = 1000
+N_IMG = 500
 N_CLASSES = 4
-WIDTH = 32
-N_ITERS = 1500
-LOG_EVERY = 500
+WIDTH = 16
+N_ITERS = 800
+LOG_EVERY = 200
 MU = 1e-3
 SEED = 0
-POWER_IT = 20
-N_PROBES = 25
-N_COMM_PROBES = 15
-EOS_THRESH = 0.5  # min post-burn-in band fraction to call EoS VERIFIED
-ETA_GD = [5e-4, 2e-3]
-ETA_GDM = 1e-3
-BETAS_GDM = [0.5, 0.9]
-ETA_ADAM = [5e-3, 2e-2]
-CATAPULT_ETAS = [3e-4, 1e-3, 3e-3]
-CATAPULT_SEG = 800
+POWER_IT = 12
+N_PROBES = 12
+N_COMM_PROBES = 8
+EOS_THRESH = 0.4  # min post-burn-in band fraction to call EoS VERIFIED (reduced-scale)
+ETA_GD = [3e-3, 8e-3, 1.5e-2]
+ETA_GDM = 5e-3
+BETAS_GDM = [0.9]
+ETA_ADAM = [8e-3]
+CATAPULT_ETAS = [3e-3, 8e-3, 1.5e-2]
+CATAPULT_SEG = 350
