@@ -195,53 +195,56 @@ def spectral_radius_fpm_structured(
 
     Uses the entrywise second-moment recursion (general frozen-preconditioned ZO
     momentum family; ZO-GD = beta 0, ZO-GDM = delta 1 / s 1, Frozen ZO-Adam =
-    delta = diag(P)^{-1}, s = 1-beta1).
+    delta = diag(P)^{-1}, s = 1-beta1).  Vectorized over the d(d-1)/2 off-diagonal
+    pairs and the 3d x 3d diagonal block.
     """
     lam = np.asarray(lam, float)
     delta = np.asarray(delta, float)
     d = len(lam)
-    # ---- off-diagonal pairs: 4x4 systems on (x=X_ij, c=C_ij, d=C_ji, m=M_ij) ----
-    rho_off = 0.0
-    for i in range(d):
-        ai, di = lam[i], delta[i]
-        for j in range(i + 1, d):
-            aj, dj = lam[j], delta[j]
-            M44 = np.zeros((4, 4))
-            # x'
-            M44[0] = [1 - eta*s*(di*ai+aj*dj) + 2*eta**2*s**2*di*dj*ai*aj,
-                      -eta*beta*dj*(1-eta*s*di*ai), -eta*beta*di*(1-eta*s*aj*dj), eta**2*beta**2*di*dj]
-            # c' = C'_ij  (self coef has factor 1: only DHC contributes)
-            M44[1] = [s*aj - 2*eta*s**2*di*ai*aj, beta - eta*s*beta*di*ai, -eta*beta*s*di*aj, -eta*beta**2*di]
-            # d' = C'_ji  (swap i<->j)
-            M44[2] = [s*ai - 2*eta*s**2*dj*ai*aj, -eta*beta*s*dj*ai, beta - eta*s*beta*dj*aj, -eta*beta**2*dj]
-            # m' = M'_ij  (HC, C^T H carry no D)
-            M44[3] = [2*s**2*ai*aj, s*beta*ai, s*beta*aj, beta**2]
-            rho_off = max(rho_off, float(np.max(np.abs(np.linalg.eigvals(M44)))))
-    # ---- diagonal block: 3d x 3d on (x_i, c_i, m_i), coupled by T = sum_k lam_k^2 x_k ----
-    # ordering: [x(0..d-1), c(d..2d-1), m(2d..3d-1)]
-    M3 = np.zeros((3 * d, 3 * d))
+    # ---- off-diagonal pairs: 4x4 systems, batched ----
+    iu, ju = np.triu_indices(d, 1)
+    ai, aj = lam[iu], lam[ju]
+    di, dj = delta[iu], delta[ju]
+    n = iu.size
+    M44 = np.empty((n, 4, 4))
+    M44[:, 0, 0] = 1 - eta * s * (di * ai + aj * dj) + 2 * eta ** 2 * s ** 2 * di * dj * ai * aj
+    M44[:, 0, 1] = -eta * beta * dj * (1 - eta * s * di * ai)
+    M44[:, 0, 2] = -eta * beta * di * (1 - eta * s * aj * dj)
+    M44[:, 0, 3] = eta ** 2 * beta ** 2 * di * dj
+    M44[:, 1, 0] = s * aj - 2 * eta * s ** 2 * di * ai * aj
+    M44[:, 1, 1] = beta - eta * s * beta * di * ai
+    M44[:, 1, 2] = -eta * beta * s * di * aj
+    M44[:, 1, 3] = -eta * beta ** 2 * di
+    M44[:, 2, 0] = s * ai - 2 * eta * s ** 2 * dj * ai * aj
+    M44[:, 2, 1] = -eta * beta * s * dj * ai
+    M44[:, 2, 2] = beta - eta * s * beta * dj * aj
+    M44[:, 2, 3] = -eta * beta ** 2 * dj
+    M44[:, 3, 0] = 2 * s ** 2 * ai * aj
+    M44[:, 3, 1] = s * beta * ai
+    M44[:, 3, 2] = s * beta * aj
+    M44[:, 3, 3] = beta ** 2
+    rho_off = float(np.max(np.abs(np.linalg.eigvals(M44)))) if n else 0.0
+    # ---- diagonal block: 3d x 3d on (x_i, c_i, m_i), coupled by T=sum_k lam_k^2 x_k ----
     lam2 = lam ** 2
-    for i in range(d):
-        ai, di, li = lam[i], delta[i], lam2[i]
-        # x'_i
-        M3[i, i] = 1 - 2*eta*s*di*ai + 2*eta**2*s**2*di**2*ai**2
-        M3[i, d + i] = -2*eta*beta*di*(1 - eta*s*di*ai)
-        M3[i, 2*d + i] = eta**2*beta**2*di**2
-        # the trace term eta^2 s^2 di^2 T contributes eta^2 s^2 di^2 * (lam_k^2) to column x_k
-        for k in range(d):
-            M3[i, k] += eta**2*s**2*di**2*lam2[k]
-        # c'_i
-        M3[d + i, i] = s*ai - 2*eta*s**2*di*ai**2
-        M3[d + i, d + i] = beta - 2*eta*s*beta*di*ai
-        M3[d + i, 2*d + i] = -eta*beta**2*di
-        for k in range(d):
-            M3[d + i, k] += -eta*s**2*di*lam2[k]
-        # m'_i  (HC carries no D)
-        M3[2*d + i, i] = 2*s**2*ai**2
-        M3[2*d + i, d + i] = 2*s*beta*ai
-        M3[2*d + i, 2*d + i] = beta**2
-        for k in range(d):
-            M3[2*d + i, k] += s**2*lam2[k]
+    M3 = np.zeros((3 * d, 3 * d))
+    idx = np.arange(d)
+    # x'_i  (self + c + m terms)
+    M3[idx, idx] = 1 - 2 * eta * s * delta * lam + 2 * eta ** 2 * s ** 2 * delta ** 2 * lam ** 2
+    M3[idx, d + idx] = -2 * eta * beta * delta * (1 - eta * s * delta * lam)
+    M3[idx, 2 * d + idx] = eta ** 2 * beta ** 2 * delta ** 2
+    # x'_i trace coupling: eta^2 s^2 delta_i^2 * lam_k^2 -> row i, col k (x block)
+    outer = (eta ** 2 * s ** 2 * delta ** 2)[:, None] * lam2[None, :]  # (d,d)
+    M3[np.ix_(idx, idx)] += outer
+    # c'_i
+    M3[d + idx, idx] = s * lam - 2 * eta * s ** 2 * delta * lam ** 2
+    M3[d + idx, d + idx] = beta - 2 * eta * s * beta * delta * lam
+    M3[d + idx, 2 * d + idx] = -eta * beta ** 2 * delta
+    M3[np.ix_(d + idx, idx)] += (-eta * s ** 2 * delta)[:, None] * lam2[None, :]
+    # m'_i  (HC carries no D)
+    M3[2 * d + idx, idx] = 2 * s ** 2 * lam ** 2
+    M3[2 * d + idx, d + idx] = 2 * s * beta * lam
+    M3[2 * d + idx, 2 * d + idx] = beta ** 2
+    M3[np.ix_(2 * d + idx, idx)] += s ** 2 * lam2[None, :]  # T coupling (row-constant)
     rho_diag = float(np.max(np.abs(np.linalg.eigvals(M3))))
     return max(rho_off, rho_diag)
 
