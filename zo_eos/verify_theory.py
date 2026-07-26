@@ -50,8 +50,8 @@ GD_DIMS = [60, 150, 300]
 FPM_DIM = 80
 FPM_BETAS = [0.0, 0.3, 0.6, 0.9]
 ADAM_BETA1S = [0.1, 0.5, 0.9]
-MC_T = 800
-MC_SEEDS = 80
+MC_T = 600
+MC_SEEDS = 64
 
 
 @dataclass

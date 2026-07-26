@@ -17,17 +17,21 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 def simulate_zogd(H: np.ndarray, eta: float, T: int, n_seeds: int, rng: np.random.Generator,
                   x0_scale: float = 1.0) -> np.ndarray:
-    """Return array of shape (n_seeds, T+1) of ||x_t||^2 under ZO-GD on 1/2 x^T H x."""
+    """Return array of shape (n_seeds, T+1) of ||x_t||^2 under ZO-GD on 1/2 x^T H x.
+
+    Vectorized across seeds: x is (n_seeds, d), u is (n_seeds, d) per step.
+    """
     d = H.shape[0]
+    X = rng.standard_normal((n_seeds, d)) * x0_scale  # (n_seeds, d)
     sq = np.empty((n_seeds, T + 1))
-    for k in range(n_seeds):
-        x = rng.standard_normal(d) * x0_scale
-        sq[k, 0] = x @ x
-        for t in range(T):
-            u = rng.standard_normal(d)
-            g = (u @ (H @ x)) * u  # (u^T H x) u, exact two-point estimator
-            x = x - eta * g
-            sq[k, t + 1] = x @ x
+    sq[:, 0] = (X * X).sum(axis=1)
+    for t in range(T):
+        U = rng.standard_normal((n_seeds, d))
+        Hx = X @ H.T                        # (n_seeds, d) = (u^T H x) needs u dot Hx
+        dot = (U * Hx).sum(axis=1)          # (n_seeds,) = u^T H x
+        g = dot[:, None] * U                # (n_seeds, d) gradient estimate
+        X = X - eta * g
+        sq[:, t + 1] = (X * X).sum(axis=1)
     return sq
 
 
@@ -52,7 +56,7 @@ def ms_stable_mc(H: np.ndarray, eta: float, T: int = 400, n_seeds: int = 60,
 def find_critical_eta_mc(H: np.ndarray, rng: np.random.Generator,
                          T: int = 400, n_seeds: int = 60,
                          lo: float | None = None, hi: float | None = None,
-                         iters: int = 24) -> float:
+                         iters: int = 20) -> float:
     """Binary search the empirical critical eta for ZO-GD.
 
     Uses a log-growth criterion: stable iff mean E||x_t||^2 does not grow
@@ -64,11 +68,11 @@ def find_critical_eta_mc(H: np.ndarray, rng: np.random.Generator,
     if lo is None:
         lo = 1e-5 / lam_max
     # ensure lo stable, hi unstable (shrink/grow to make so)
-    for _ in range(60):
+    for _ in range(20):
         if ms_stable_mc(H, lo, T, n_seeds, rng):
             break
         lo *= 0.5
-    for _ in range(60):
+    for _ in range(20):
         if not ms_stable_mc(H, hi, T, n_seeds, rng):
             break
         hi *= 1.5
