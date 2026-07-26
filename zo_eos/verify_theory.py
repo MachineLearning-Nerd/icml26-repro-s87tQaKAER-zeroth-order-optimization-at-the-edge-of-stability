@@ -140,15 +140,16 @@ def _cifar_design(d_feat: int, n: int):
     from torchvision import datasets
 
     ds = datasets.CIFAR10(root="/tmp/cifar_data", train=True, download=True)
-    X = ds.data.reshape(len(ds.data), -1).astype(np.float64)  # (50000, 3072)
     labels = np.asarray(ds.targets)
-    X = X[labels < 4][:n]  # first 4 classes, n examples (paper's subset)
+    idx = np.where(labels < 4)[0][:n]  # first 4 classes, n examples (paper's subset)
+    data = ds.data[idx].astype(np.float32)  # (n, 32, 32, 3) -- small, mask BEFORE casting
+    X = data.reshape(n, -1)  # (n, 3072)
     mu = X.mean(0, keepdims=True)
     sigma = X.std(0, keepdims=True) + 1e-6
     X = (X - mu) / sigma
     rng = np.random.default_rng(123)
-    idx = rng.choice(X.shape[1], size=d_feat, replace=False)  # pick d_feat pixels
-    return X[:, idx]
+    sel = rng.choice(X.shape[1], size=d_feat, replace=False)  # pick d_feat pixels
+    return X[:, sel]
 
 
 def run(out_dir: str | None = None) -> dict:
