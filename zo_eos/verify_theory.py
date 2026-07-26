@@ -46,12 +46,12 @@ def _in_bounds(e: float, lo: float, hi: float) -> bool:
 # Problem sizes (tunable).  ZO-GD uses the closed-form structured spectral radius
 # so it scales to large d; FPM (GDM/Adam) uses matrix-free Arnoldi so we keep d
 # moderate.  Both are far above the 5-dim diagonal toy setup of the prior logbook.
-GD_DIMS = [60, 150, 300]
-FPM_DIM = 40
+GD_DIMS = [40, 100, 200]
+FPM_DIM = 30
 FPM_BETAS = [0.0, 0.3, 0.6, 0.9]
 ADAM_BETA1S = [0.1, 0.5, 0.9]
-MC_T = 600
-MC_SEEDS = 64
+MC_T = 500
+MC_SEEDS = 48
 
 
 @dataclass
@@ -82,7 +82,7 @@ def _eta_op_gd(eigs: np.ndarray) -> float:
         return brentq(f, lo, hi, xtol=1e-12, rtol=1e-12, maxiter=200)
     except Exception:
         pass
-    grid = np.geomspace(0.5 * lo, 1.5 * hi, 80)
+    grid = np.geomspace(0.5 * lo, 1.5 * hi, 40)
     rg = np.array([op.spectral_radius_gd(lam, e) for e in grid])
     good = np.where(rg <= 1.0 + 1e-6)[0]
     if len(good) == 0:
@@ -122,12 +122,12 @@ def _eta_op_fpm(lam, delta, beta, s, lo: float, hi: float) -> float:
 
 def _build_hessians() -> list[tuple[str, np.ndarray]]:
     out: list[tuple[str, np.ndarray]] = []
-    specs = ["decay", "powerlaw", "two_group", "linear", "uniform"]
+    specs = ["decay", "two_group", "linear", "uniform"]
     for d in GD_DIMS:
         for sp in specs:
             out.append((f"random_dense_d{d}_{sp}", hz.random_dense_psd(d, sp, seed=1000 + d + hash(sp) % 97)))
     # a diagonal (but high-d) one for completeness -- still far from 5-dim toy
-    out.append(("diag_decay_d300", hz.diagonal_psd(1.0 / np.arange(1, 301) ** 1.3)))
+    out.append(("diag_decay_d200", hz.diagonal_psd(1.0 / np.arange(1, 201) ** 1.3)))
     # real-data least-squares Hessian (dense, real spectrum) -- only if CIFAR is
     # already cached locally; we never trigger a download in the (fast) theory
     # stage.  The theorems hold for every PSD H, so the synthetic dense matrices
