@@ -47,7 +47,7 @@ def _in_bounds(e: float, lo: float, hi: float) -> bool:
 # so it scales to large d; FPM (GDM/Adam) uses matrix-free Arnoldi so we keep d
 # moderate.  Both are far above the 5-dim diagonal toy setup of the prior logbook.
 GD_DIMS = [40, 100, 200]
-FPM_DIM = 30
+FPM_DIM = 40  # must match a GD_DIMS entry so the FPM (GDM/Adam) Hessians exist
 FPM_BETAS = [0.0, 0.3, 0.6, 0.9]
 ADAM_BETA1S = [0.1, 0.5, 0.9]
 MC_T = 500
