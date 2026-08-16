@@ -1,0 +1,117 @@
+[theory] real-data Hessian skipped (CIFAR not cached; reserved for the empirical stage)
+
+==============================================================================
+CLAIM 1 (Theorem 1, ZO-GD): eta_ms* in [2/(Tr+2lam_max), 2/Tr],
+  exact root of Sum_i eta lam_i/(2(1-eta lam_i)) = 1.
+==============================================================================
+Hessian                         d     eta_op   eta_form                bounds    rel_err
+random_dense_d40_decay         40    0.46639    0.46639  [0.38412,0.62370]   4.03e-14
+random_dense_d40_two_group     40    0.08727    0.08727  [0.08696,0.09524]   3.22e-13
+random_dense_d40_linear        40    0.09276    0.09276  [0.09009,0.09901]   1.06e-13
+random_dense_d40_uniform       40    0.04762    0.04762  [0.04762,0.05000]   1.01e-14
+random_dense_d100_decay       100    0.43727    0.43727  [0.35695,0.55509]   1.28e-13
+random_dense_d100_two_group   100    0.03676    0.03676  [0.03670,0.03810]   5.12e-13
+random_dense_d100_linear      100    0.03858    0.03858  [0.03810,0.03960]   1.11e-12
+random_dense_d100_uniform     100    0.01961    0.01961  [0.01961,0.02000]   3.54e-16
+random_dense_d200_decay       200    0.41953    0.41953  [0.34132,0.51819]   1.21e-12
+random_dense_d200_two_group   200    0.01871    0.01871  [0.01869,0.01905]   1.54e-12
+random_dense_d200_linear      200    0.01954    0.01954  [0.01942,0.01980]   2.04e-13
+random_dense_d200_uniform     200    0.00990    0.00990  [0.00990,0.01000]   1.33e-11
+diag_decay_d200               200    0.46609    0.46609  [0.38078,0.61494]   7.39e-13
+
+==============================================================================
+CLAIM 2 (Theorem 2, ZO-GDM): eta_ms* adjusted by beta via Eq.18,
+  bounds Eq.19; decreases with beta (opposite of FO GDM).
+==============================================================================
+
+  Hessian: random_dense_d40_decay (d=40)
+    beta      eta_op    eta_form                  bounds     rel_err
+     0.0     0.46639     0.46639  [0.38412,0.62370]    7.26e-15
+     0.3     0.35016     0.35016  [0.29504,0.43659]    4.12e-12
+     0.6     0.20892     0.20892  [0.17951,0.24948]    2.69e-13
+     0.9     0.05378     0.05378  [0.04696,0.06237]    4.26e-15
+
+  Hessian: random_dense_d40_two_group (d=40)
+    beta      eta_op    eta_form                  bounds     rel_err
+     0.0     0.08727     0.08727  [0.08696,0.09524]    5.89e-12
+     0.3     0.06230     0.06230  [0.06212,0.06667]    3.04e-13
+     0.6     0.03604     0.03604  [0.03596,0.03810]    6.70e-14
+     0.9     0.00909     0.00909  [0.00907,0.00952]    1.14e-11
+
+  Hessian: random_dense_d40_linear (d=40)
+    beta      eta_op    eta_form                  bounds     rel_err
+     0.0     0.09276     0.09276  [0.09009,0.09901]    1.02e-14
+     0.3     0.06590     0.06590  [0.06440,0.06931]    2.78e-14
+     0.6     0.03801     0.03801  [0.03730,0.03960]    5.34e-11
+     0.9     0.00956     0.00956  [0.00941,0.00990]    2.15e-13
+
+==============================================================================
+CLAIM 3 (Theorem 3, Frozen ZO-Adam): eta_ms* depends on spectrum of
+  P^{-1}H; exact root Eq.20, bounds Eq.21 (commuting P).
+==============================================================================
+
+  Hessian: random_dense_d40_decay (d=40), commuting diagonal P in H's eigenbasis
+   beta1      eta_op    eta_form                  bounds     rel_err
+     0.1     0.84380     0.84380  [0.69679,1.01978]    3.68e-14
+     0.5     0.89052     0.89052  [0.76107,1.01978]    4.49e-15
+     0.9     0.91776     0.91776  [0.80401,1.01978]    6.62e-14
+
+  Hessian: random_dense_d40_two_group (d=40), commuting diagonal P in H's eigenbasis
+   beta1      eta_op    eta_form                  bounds     rel_err
+     0.1     0.13532     0.13532  [0.13208,0.14588]    4.08e-14
+     0.5     0.13800     0.13800  [0.13550,0.14588]    1.58e-11
+     0.9     0.13959     0.13959  [0.13756,0.14588]    5.41e-14
+
+  Hessian: random_dense_d40_linear (d=40), commuting diagonal P in H's eigenbasis
+   beta1      eta_op    eta_form                  bounds     rel_err
+     0.1     0.13155     0.13155  [0.13011,0.13829]    9.66e-14
+     0.5     0.13328     0.13328  [0.13220,0.13829]    4.52e-14
+     0.9     0.13431     0.13431  [0.13344,0.13829]    4.40e-13
+
+==============================================================================
+NEGATIVE CONTROL (FO vs ZO spectrum dependence)
+==============================================================================
+     trace  lam_max   eta_ZO(ms)   eta_FO(GD)
+     10.00     1.00      0.18578      2.00000
+     14.60     1.00      0.12441      2.00000
+     23.80     2.00      0.07395      1.00000
+
+==============================================================================
+MONTE CARLO CROSS-CHECK (independent route, ZO-GD)
+==============================================================================
+  random_dense_d40_decay       eta_op=0.46639  eta_mc=0.50059  ratio=1.073
+  random_dense_d40_two_group   eta_op=0.08727  eta_mc=0.08985  ratio=1.030
+  random_dense_d40_linear      eta_op=0.09276  eta_mc=0.09788  ratio=1.055
+
+==============================================================================
+CLAIM 5 (theory half, Eqs 23-25): (Tr, lam_max) bounds bracket eta_ms*.
+==============================================================================
+  ZO-GD mean bound ratio hi/lo = 1.208 (->1 means trace-dominated, tight).
+  All operator-defined eta_ms* inside (Tr,lam_max) bounds: True
+
+==============================================================================
+THEORY VERDICT: VERIFIED
+  PRIMARY  max|rho(operator @ eta_formula) - 1| = 2.53e-14  (tol 1e-5)
+  SECONDARY max|eta_op - eta_formula|/eta_formula   = 5.34e-11  (operator own-root match)
+  bounds (Tr,lam_max) hold for all: True
+  finite problems = 34/34;  nan/unresolved = 0
+  runtime = 2.0s
+==============================================================================
+{
+  "verdict": "VERIFIED",
+  "primary_max_rho_at_formula_minus_1": 2.531308496145357e-14,
+  "primary_tol": 1e-05,
+  "secondary_max_rel_err_operator_vs_formula": 5.344769040741239e-11,
+  "tol_rel": 0.0005,
+  "bounds_all_hold": true,
+  "n_finite": 34,
+  "n_nan": 0,
+  "n_problems": 34,
+  "runtime_s": 1.9724359512329102,
+  "claims": {
+    "claim1_zogd": "VERIFIED",
+    "claim2_zogdm": "VERIFIED",
+    "claim3_zoadam": "VERIFIED",
+    "claim5_theory": "VERIFIED"
+  }
+}

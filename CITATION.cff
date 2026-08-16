@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this reproduction audit, please cite the paper and this repository."
+title: "ICML 2026 reproduction audit: Zeroth-Order Optimization at the Edge of Stability"
+type: software
+authors:
+  - family-names: Jinjala
+    given-names: Dinesh
+    affiliation: MachineLearning-Nerd
+repository-code: "https://github.com/MachineLearning-Nerd/icml26-zeroth-order-edge-of-stability-independent-audit"
+url: "https://github.com/MachineLearning-Nerd/icml26-zeroth-order-edge-of-stability-independent-audit"
+date-released: "2026-08-16"
+keywords:
+  - ICML 2026
+  - zeroth-order optimization
+  - edge of stability
+  - mean-square stability
+  - reproducibility
+  - claim audit
+preferred-citation:
+  type: article
+  title: "Zeroth-Order Optimization at the Edge of Stability"
+  authors:
+    - family-names: Song
+      given-names: Minhak
+    - family-names: Zhang
+      given-names: Liang
+    - family-names: Li
+      given-names: Bingcong
+    - family-names: He
+      given-names: Niao
+    - family-names: Muehlebach
+      given-names: Michael
+    - family-names: Oh
+      given-names: Sewoong
+  journal: "Proceedings of the 43rd International Conference on Machine Learning"
+  year: 2026
+  doi: "10.48550/arXiv.2604.14669"
+  url: "https://arxiv.org/abs/2604.14669"

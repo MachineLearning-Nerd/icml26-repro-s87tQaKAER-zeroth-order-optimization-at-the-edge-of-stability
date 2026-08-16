@@ -1,0 +1,18 @@
+{
+  "verdict": "VERIFIED",
+  "primary_max_rho_at_formula_minus_1": 2.90878432451791e-14,
+  "primary_tol": 1e-05,
+  "secondary_max_rel_err_operator_vs_formula": 5.339748541201669e-11,
+  "tol_rel": 0.0005,
+  "bounds_all_hold": true,
+  "n_finite": 34,
+  "n_nan": 0,
+  "n_problems": 34,
+  "runtime_s": 3.6095879077911377,
+  "claims": {
+    "claim1_zogd": "VERIFIED",
+    "claim2_zogdm": "VERIFIED",
+    "claim3_zoadam": "VERIFIED",
+    "claim5_theory": "VERIFIED"
+  }
+}

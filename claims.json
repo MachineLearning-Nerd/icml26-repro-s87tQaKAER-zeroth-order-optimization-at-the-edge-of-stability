@@ -1,0 +1,126 @@
+{
+  "paper": {
+    "title": "Zeroth-Order Optimization at the Edge of Stability",
+    "arxiv_id": "2604.14669",
+    "reproduction_contract": "v2",
+    "openreview_id": "s87tQaKAER",
+    "authors": [
+      "Minhak Song",
+      "Liang Zhang",
+      "Bingcong Li",
+      "Niao He",
+      "Michael Muehlebach",
+      "Sewoong Oh"
+    ]
+  },
+  "claims": [
+    {
+      "id": "C1",
+      "contract_reference": "Theorem 1",
+      "verdict": "VERIFIED",
+      "scope": "finite exact covariance-operator checks for ZO-GD",
+      "implementation": [
+        "zo_eos/operators.py",
+        "zo_eos/formulas.py",
+        "zo_eos/verify_theory.py"
+      ],
+      "evidence": [
+        "audit/faithful-theory/theory_summary.json",
+        "audit/faithful-theory/theory_rows.csv",
+        "audit/faithful-theory/run.log",
+        "audit/hf-logbook/pages/theory/page.md",
+        "audit/hf-logbook/artifacts/theory/theory_rows.csv"
+      ],
+      "qualification": "Finite corroboration; does not replace the universal proof."
+    },
+    {
+      "id": "C2",
+      "contract_reference": "Theorem 2",
+      "verdict": "VERIFIED",
+      "scope": "finite exact covariance-operator checks for ZO-GDM",
+      "implementation": [
+        "zo_eos/operators.py",
+        "zo_eos/formulas.py",
+        "zo_eos/verify_theory.py"
+      ],
+      "evidence": [
+        "audit/faithful-theory/theory_summary.json",
+        "audit/faithful-theory/theory_rows.csv",
+        "audit/faithful-theory/run.log",
+        "audit/hf-logbook/pages/theory/page.md",
+        "audit/hf-logbook/artifacts/theory/theory_rows.csv",
+        "audit/hf-logbook/artifacts/empirical/traj_ZO-GDM_eta0.005_beta0.9.csv"
+      ],
+      "qualification": "The CNN divergence is qualitative context, not a neural-network reproduction of the theorem."
+    },
+    {
+      "id": "C3",
+      "contract_reference": "Theorem 3",
+      "verdict": "VERIFIED",
+      "scope": "finite commuting frozen-preconditioner checks for ZO-Adam",
+      "implementation": [
+        "zo_eos/operators.py",
+        "zo_eos/formulas.py",
+        "zo_eos/verify_theory.py"
+      ],
+      "evidence": [
+        "audit/faithful-theory/theory_summary.json",
+        "audit/faithful-theory/theory_rows.csv",
+        "audit/faithful-theory/run.log",
+        "audit/hf-logbook/pages/theory/page.md",
+        "audit/hf-logbook/artifacts/theory/theory_rows.csv"
+      ],
+      "qualification": "Does not cover arbitrary non-commuting adaptive Adam dynamics."
+    },
+    {
+      "id": "C4",
+      "contract_reference": "Section 5, Figure 2",
+      "verdict": "BLOCKED",
+      "scope": "reduced CPU CNN attempt at the empirical mean-square EoS",
+      "implementation": [
+        "zo_eos/nn_train.py",
+        "zo_eos/verify_empirical.py"
+      ],
+      "evidence": [
+        "audit/hf-logbook/pages/empirical/page.md",
+        "audit/hf-logbook/artifacts/empirical/traj_ZO-GD_eta0.003_betax.csv",
+        "audit/hf-logbook/artifacts/empirical/traj_ZO-GD_eta0.008_betax.csv",
+        "audit/hf-logbook/artifacts/empirical/traj_ZO-GD_eta0.015_betax.csv",
+        "audit/hf-logbook/artifacts/empirical/images/eos_cnn.png"
+      ],
+      "qualification": "Width-16/500-example CPU scale is far below the paper setup; ResNet20 and ViT were not run."
+    },
+    {
+      "id": "C5",
+      "contract_reference": "Section 5 tracking equations (5)-(7) in v2",
+      "verdict": "VERIFIED_THEORY_PARTIAL_EMPIRICAL",
+      "scope": "trace/top-eigenvalue bounds and their empirical measurement path",
+      "implementation": [
+        "zo_eos/verify_theory.py",
+        "zo_eos/nn_train.py"
+      ],
+      "evidence": [
+        "audit/faithful-theory/theory_summary.json",
+        "audit/faithful-theory/theory_rows.csv",
+        "audit/faithful-theory/run.log",
+        "audit/hf-logbook/pages/theory/page.md",
+        "audit/hf-logbook/pages/empirical/page.md"
+      ],
+      "qualification": "Bounds bracket all finite theory roots; empirical tracking is blocked by the reduced curvature scale."
+    },
+    {
+      "id": "C6",
+      "contract_reference": "Section 5, Figure 3",
+      "verdict": "BLOCKED",
+      "scope": "step-size-increase catapult experiment",
+      "implementation": [
+        "zo_eos/nn_train.py",
+        "zo_eos/verify_empirical.py"
+      ],
+      "evidence": [
+        "audit/hf-logbook/pages/empirical/page.md"
+      ],
+      "qualification": "The code path exists, but no completed CPU trajectory is available."
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "paper": {
+    "arxiv_id": "2604.14669",
+    "current_version": "v2",
+    "source_checked": "2026-08-16"
+  },
+  "runs": [
+    {
+      "name": "local-faithful-theory",
+      "date": "2026-08-16",
+      "command": "ZO_EOS_ARTIFACTS=audit/faithful-theory uv run --frozen --extra nn python -c 'from zo_eos import verify_theory; verify_theory.run()'",
+      "environment": "CPython 3.12.11 / macOS arm64 / CPU",
+      "result": "34/34 finite theory problems; C1, C2, C3, and theory-half C5 VERIFIED"
+    },
+    {
+      "name": "historical-huggingface-empirical-child",
+      "snapshot_date": "2026-08-16",
+      "source": "https://huggingface.co/spaces/DineshAI/s87tQaKAER",
+      "space_update": "2026-07-26",
+      "run_id": "76b95d3f",
+      "source_commit": "b9a3840",
+      "result": "reduced CNN EoS not reproduced; ZO-GDM divergence observed; ZO-Adam and catapult incomplete"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "paper_2604.14669v1.pdf",
+      "sha256": "4aede09df7bc713437fdc6c8743c72c66735226e943a2010f0e3961e89fb9942"
+    },
+    {
+      "path": "paper_2604.14669v2.pdf",
+      "sha256": "1a37bea38e4f3518fa6ec93e149cbe7886bba0bb46719b3a0066ca465f6cdc39"
+    },
+    {
+      "path": "source/arxiv/2604.14669v1.tar",
+      "sha256": "bd532c759faad1ba1d7a74574b75237874968b8e7974ae653cf16d09a3fc3b41"
+    },
+    {
+      "path": "source/arxiv/2604.14669v2.tar",
+      "sha256": "5acb3d2d3fc99e7a9810a0dbfedd351dbba86822c30d0c67cec2232095f84f84"
+    },
+    {
+      "path": "audit/faithful-theory/run.log",
+      "sha256": "8c3c23d8c9523beab0a9e124c1a927329edaa59b403cabdddfc1e3e82e88b7ad"
+    },
+    {
+      "path": "audit/faithful-theory/theory_rows.csv",
+      "sha256": "6f7f44660a4b52f231a9454f0c5af19e0c0c74ec7b7f13cb9b44dcaf7225068f"
+    },
+    {
+      "path": "audit/faithful-theory/theory_summary.json",
+      "sha256": "60ec27ad9a460d4abae33f7c132ec99bb187673bc67e5694151cf6bb96d81b9c"
+    },
+    {
+      "path": "audit/hf-logbook/AUDIT_SNAPSHOT.md",
+      "sha256": "dd5c34c2a21a26399eb965adfbd81083d264ea83c61533343ea38db51b70f592"
+    },
+    {
+      "path": "audit/hf-logbook/README.md",
+      "sha256": "334a51b793fc7771a8f0bffe346455d73e16fa35c6b91a85ce7905ff583a170d"
+    },
+    {
+      "path": "audit/hf-logbook/logbook.json",
+      "sha256": "6003f642725cffe07e0554a8b94196f48b444fa5cca2c6342ce8471eff151854"
+    },
+    {
+      "path": "audit/hf-logbook/pages/claims-verified/page.md",
+      "sha256": "5052a0e4dc49fca4aa1b960f205230f42cf786618708bffcbf87067072872428"
+    },
+    {
+      "path": "audit/hf-logbook/pages/claims/page.md",
+      "sha256": "fd3674faad5b15fcc5009fa01da7c27240f85125616b90cff945a1f28ceaba18"
+    },
+    {
+      "path": "audit/hf-logbook/pages/evidence/page.md",
+      "sha256": "f62d1b5b942e5e744fe2c24b74651d878020a69f3bd9fc96d7568e7ba8d0e09d"
+    },
+    {
+      "path": "audit/hf-logbook/pages/empirical/page.md",
+      "sha256": "757f1feb36ebbc3b5f1e7461b1000399c528cc519392dec044abde227b3d0326"
+    },
+    {
+      "path": "audit/hf-logbook/pages/theory/page.md",
+      "sha256": "a9235843e19d710857d10cf38015ce1a2854e24f46b53f5221ba0b2e016350d9"
+    },
+    {
+      "path": "audit/hf-logbook/pages/verification-run/page.md",
+      "sha256": "39e0fbfa2d7b959ecdc0bb42785d8e1f4f1a74cb3d79cd68a57d49f360c4fe43"
+    },
+    {
+      "path": "audit/hf-logbook/artifacts/theory/theory_rows.csv",
+      "sha256": "96da1a4e3114cd048965e57558f0fd90812b419c6f4a43f8dddb1664d3eb2382"
+    },
+    {
+      "path": "audit/hf-logbook/artifacts/theory/theory_summary.json",
+      "sha256": "86ab06a158e60a4c25f3ecd6c27e62c419e6b5cfc949bbaf13997cbe11d84745"
+    },
+    {
+      "path": "audit/hf-logbook/artifacts/empirical/traj_ZO-GD_eta0.003_betax.csv",
+      "sha256": "6d6a525af8deb67ad7f1dcbca95578ac0148f22c4c6fc60d91dd56942c81621e"
+    },
+    {
+      "path": "audit/hf-logbook/artifacts/empirical/traj_ZO-GD_eta0.008_betax.csv",
+      "sha256": "92d5107182c50cebec861d9db66e3f2c54a744b2ee67141d322e2fcb5999c59f"
+    },
+    {
+      "path": "audit/hf-logbook/artifacts/empirical/traj_ZO-GD_eta0.015_betax.csv",
+      "sha256": "02d569a86486e6f1cfcab13b8629e81d971a248dc3a7f805ca40d497262a418c"
+    },
+    {
+      "path": "audit/hf-logbook/artifacts/empirical/traj_ZO-GDM_eta0.005_beta0.9.csv",
+      "sha256": "77e6b3793fead666d7d4a47660fa667842d2dbaee9672e42f86f02efb59c662a"
+    },
+    {
+      "path": "audit/hf-logbook/artifacts/empirical/images/eos_cnn.png",
+      "sha256": "34b8a0e17f5ded49c8f25a4e6cd233fa203eba99e4c69aec527fbafab43a96b6"
+    }
+  ]
+}
