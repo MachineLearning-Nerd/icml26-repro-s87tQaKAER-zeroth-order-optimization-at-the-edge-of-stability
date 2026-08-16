@@ -52,6 +52,7 @@ FPM_BETAS = [0.0, 0.3, 0.6, 0.9]
 ADAM_BETA1S = [0.1, 0.5, 0.9]
 MC_T = 500
 MC_SEEDS = 48
+SPEC_SEED_OFFSETS = {"decay": 11, "two_group": 23, "linear": 37, "uniform": 47}
 
 
 @dataclass
@@ -125,7 +126,7 @@ def _build_hessians() -> list[tuple[str, np.ndarray]]:
     specs = ["decay", "two_group", "linear", "uniform"]
     for d in GD_DIMS:
         for sp in specs:
-            out.append((f"random_dense_d{d}_{sp}", hz.random_dense_psd(d, sp, seed=1000 + d + hash(sp) % 97)))
+            out.append((f"random_dense_d{d}_{sp}", hz.random_dense_psd(d, sp, seed=1000 + d + SPEC_SEED_OFFSETS[sp])))
     # a diagonal (but high-d) one for completeness -- still far from 5-dim toy
     out.append(("diag_decay_d200", hz.diagonal_psd(1.0 / np.arange(1, 201) ** 1.3)))
     # real-data least-squares Hessian (dense, real spectrum) -- only if CIFAR is
