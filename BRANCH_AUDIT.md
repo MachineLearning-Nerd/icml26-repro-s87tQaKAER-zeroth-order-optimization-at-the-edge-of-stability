@@ -58,5 +58,24 @@ verified separately after publication.
 
 ## Published final state
 
-This section is filled with the exact post-publication branch tips and the
-history-backup hash after the repository rename and force-with-lease push.
+Verified against GitHub on 2026-08-16 after the repository rename and
+force-with-lease publication:
+
+- final URL: https://github.com/MachineLearning-Nerd/icml26-zeroth-order-edge-of-stability-independent-audit;
+- default branch: main;
+- public branches: main, baseline/theory-reproduction, and experiment/cnn-eos;
+- old orx/* branches: deleted;
+- master branch: absent;
+- repository owner: MachineLearning-Nerd;
+- description and homepage: the paper-first audit description and the arXiv
+  record, respectively.
+
+The final branch tip hashes and the read-back verification output are recorded
+in the ICML2026_REPOSITORIES.md tracker. The local pre-history-rewrite bundle
+is retained at:
+
+    /tmp/icml-zo-eos-before-history.1UIAv2/icml-zo-eos-before-history.bundle
+
+SHA-256:
+
+    010ecff3e74599878b42d837a654f153dc9fc235357e78d36c4376c8e1fc6ad0
